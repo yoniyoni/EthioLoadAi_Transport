@@ -103,6 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/cargo-requests/{cargo}/book-direct', [CargoRequestController::class, 'bookDirect']);
     Route::get('/cargo-requests/{cargo}/bids',  [BidController::class, 'index']);
     Route::post('/cargo-requests/{cargo}/bids', [BidController::class, 'store']);
+    Route::patch('/bids/{bid}',                [BidController::class, 'update']);
     Route::patch('/bids/{bid}/accept',         [BidController::class, 'accept']);
     Route::patch('/bids/{bid}/reject',         [BidController::class, 'reject']);
     Route::patch('/bids/{bid}/withdraw',       [BidController::class, 'withdraw']);

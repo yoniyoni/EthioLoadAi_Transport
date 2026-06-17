@@ -212,6 +212,39 @@ class BidController extends Controller
     }
 
     /**
+     * PATCH /bids/{bid}
+     * Driver updates the amount (and optional note) on their own pending bid.
+     */
+    public function update(Request $request, Bid $bid)
+    {
+        $user = auth()->user();
+
+        if ($bid->driver_id !== $user->id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if (!in_array($bid->status, ['pending', 'countered'])) {
+            return response()->json(['message' => 'This bid can no longer be edited.'], 422);
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:1|max:9999999.99',
+            'note'   => 'nullable|string|max:500',
+        ]);
+
+        $bid->update([
+            'amount' => $validated['amount'],
+            'note'   => $validated['note'] ?? $bid->note,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Bid updated.',
+            'data'    => new \App\Http\Resources\BidResource($bid->fresh()),
+        ]);
+    }
+
+    /**
      * GET /driver/bids
      * Driver views all their own bids (with counter-offer state).
      */
