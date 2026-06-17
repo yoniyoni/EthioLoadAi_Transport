@@ -185,11 +185,13 @@ class AiController extends Controller
         $priceMax = (int) (round($baseMax / 500) * 500);
 
         return [
-            'price_min'   => $priceMin,
-            'price_max'   => $priceMax,
-            'distance_km' => $distKm,
-            'currency'    => 'ETB',
-            'source'      => 'local_estimate',
+            'price_min'       => $priceMin,
+            'price_max'       => $priceMax,
+            'estimated_price' => (int) (($priceMin + $priceMax) / 2),
+            'distance_km'     => $distKm,
+            'currency'        => 'ETB',
+            'confidence'      => 0.80,
+            'source'          => 'local_estimate',
         ];
     }
 
