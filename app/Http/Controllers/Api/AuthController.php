@@ -13,12 +13,12 @@ class AuthController extends Controller
     {
         $validated = $request->validated();
         $user = \App\Models\User::create([
-            'name' => $validated['full_name'],
+            'name'      => $validated['full_name'],
             'full_name' => $validated['full_name'],
-            'phone' => $validated['phone'],
-            'email' => $validated['email'],
-            'password' => bcrypt($validated['password']),
-            'role' => $validated['role'],
+            'phone'     => $validated['phone'],
+            'email'     => $validated['email'] ?? null,
+            'password'  => $validated['password'],
+            'role'      => $validated['role'],
         ]);
         $token = $user->createToken('api-token')->plainTextToken;
         return response()->json([
@@ -29,17 +29,23 @@ class AuthController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
+        $request->validate([
+            'identifier' => 'required|string',
+            'password'   => 'required|string',
         ]);
-        if (!auth()->attempt($credentials)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+
+        $identifier = trim($request->identifier);
+        $field = filter_var($identifier, FILTER_VALIDATE_EMAIL) ? 'email' : 'phone';
+
+        $user = \App\Models\User::where($field, $identifier)->first();
+
+        if (!$user || !\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Invalid credentials. Check your email/phone and password.'], 401);
         }
-        $user = auth()->user();
+
         $token = $user->createToken('api-token')->plainTextToken;
         return response()->json([
-            'user' => new UserResource($user),
+            'user'  => new UserResource($user),
             'token' => $token,
         ]);
     }
@@ -56,5 +62,43 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json(new UserResource($request->user()));
+    }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password'     => 'required|string|min:6',
+        ]);
+
+        $user = $request->user();
+
+        if (!\Illuminate\Support\Facades\Hash::check($request->current_password, $user->password)) {
+            return response()->json(['message' => 'Current password is incorrect.'], 422);
+        }
+
+        $user->update(['password' => \Illuminate\Support\Facades\Hash::make($request->new_password)]);
+
+        return response()->json(['success' => true, 'message' => 'Password changed successfully.']);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+        $validated = $request->validate([
+            'name'          => 'sometimes|string|max:255',
+            'full_name'     => 'sometimes|string|max:255',
+            'phone'         => 'sometimes|string|max:50',
+            'address'       => 'sometimes|nullable|string|max:255',
+            'business_name' => 'sometimes|nullable|string|max:255',
+        ]);
+
+        if (isset($validated['name']) && !isset($validated['full_name'])) {
+            $validated['full_name'] = $validated['name'];
+        }
+        unset($validated['name']);
+
+        $user->update($validated);
+        return response()->json(new UserResource($user));
     }
 }

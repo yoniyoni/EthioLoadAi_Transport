@@ -26,16 +26,27 @@ class BookingController extends Controller
     {
         $user = auth()->user();
 
+        $with = ['cargoRequest.user', 'driver', 'vehicle', 'trip.tripStops.cargoRequest', 'rating'];
+
         if ($user->is_admin) {
-            return BookingResource::collection(Booking::all());
+            return BookingResource::collection(Booking::with($with)->get());
         }
 
         if ($user->role === 'driver') {
-            return BookingResource::collection(Booking::where('driver_id', $user->id)->get());
+            return BookingResource::collection(
+                Booking::with($with)->where('driver_id', $user->id)->get()
+            );
+        }
+
+        if ($user->role === 'fleet_owner') {
+            $driverIds = \App\Models\User::where('fleet_owner_id', $user->id)->pluck('id');
+            return BookingResource::collection(
+                Booking::with($with)->whereIn('driver_id', $driverIds)->get()
+            );
         }
 
         return BookingResource::collection(
-            Booking::whereHas('cargoRequest', function ($query) use ($user) {
+            Booking::with($with)->whereHas('cargoRequest', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })->get()
         );
@@ -58,9 +69,15 @@ class BookingController extends Controller
         $booking = Booking::findOrFail($id);
         $user = auth()->user();
 
+        $isFleetDriverBooking = $user->role === 'fleet_owner'
+            && \App\Models\User::where('id', $booking->driver_id)
+                               ->where('fleet_owner_id', $user->id)
+                               ->exists();
+
         if (!$user->is_admin
             && $booking->driver_id !== $user->id
-            && (! $booking->cargoRequest || $booking->cargoRequest->user_id !== $user->id)) {
+            && (! $booking->cargoRequest || $booking->cargoRequest->user_id !== $user->id)
+            && !$isFleetDriverBooking) {
             return response()->json(['message' => 'Forbidden'], 403);
         }
 
@@ -75,9 +92,15 @@ class BookingController extends Controller
         $booking = Booking::findOrFail($id);
         $user = auth()->user();
 
+        $isFleetDriverBooking = $user->role === 'fleet_owner'
+            && \App\Models\User::where('id', $booking->driver_id)
+                               ->where('fleet_owner_id', $user->id)
+                               ->exists();
+
         $canUpdate = $user->is_admin
             || $booking->driver_id === $user->id
-            || ($booking->cargoRequest && $booking->cargoRequest->user_id === $user->id);
+            || ($booking->cargoRequest && $booking->cargoRequest->user_id === $user->id)
+            || $isFleetDriverBooking;
 
         if (!$canUpdate) {
             return response()->json(['message' => 'Forbidden'], 403);
@@ -85,6 +108,54 @@ class BookingController extends Controller
 
         $booking = $this->bookingService->updateBooking($booking, $request->validated());
         return new BookingResource($booking);
+    }
+
+    /**
+     * PATCH /bookings/{booking}/cancel
+     * Either party (driver or shipper) cancels before trip starts.
+     */
+    public function cancel(Booking $booking)
+    {
+        $user = auth()->user();
+
+        $isFleetDriverBooking = $user->role === 'fleet_owner'
+            && \App\Models\User::where('id', $booking->driver_id)
+                               ->where('fleet_owner_id', $user->id)
+                               ->exists();
+
+        $canCancel = $user->is_admin
+            || $booking->driver_id === $user->id
+            || ($booking->cargoRequest && $booking->cargoRequest->user_id === $user->id)
+            || $isFleetDriverBooking;
+
+        if (!$canCancel) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        if ($booking->booking_status === 'completed') {
+            return response()->json(['message' => 'A completed booking cannot be cancelled.'], 422);
+        }
+
+        if ($booking->trip && $booking->trip->status === 'ongoing') {
+            return response()->json(['message' => 'Cannot cancel — trip is already in progress.'], 422);
+        }
+
+        $booking->update(['booking_status' => 'cancelled']);
+
+        // Restore cargo to pending so other drivers can bid again
+        if ($booking->cargoRequest) {
+            $booking->cargoRequest->update(['status' => 'pending']);
+        }
+
+        // Restore vehicle to available
+        if ($booking->vehicle) {
+            $booking->vehicle->update(['availability_status' => 'available']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Booking cancelled. Cargo is back on the market.',
+        ]);
     }
 
     /**
@@ -97,7 +168,8 @@ class BookingController extends Controller
 
         $canDelete = $user->is_admin
             || $booking->driver_id === $user->id
-            || ($booking->cargoRequest && $booking->cargoRequest->user_id === $user->id);
+            || ($booking->cargoRequest && $booking->cargoRequest->user_id === $user->id)
+            || (\App\Models\User::where('id', $booking->driver_id)->where('fleet_owner_id', $user->id)->exists());
 
         if (!$canDelete) {
             return response()->json(['message' => 'Forbidden'], 403);

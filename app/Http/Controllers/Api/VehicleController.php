@@ -14,10 +14,39 @@ class VehicleController extends Controller
 {
     /**
      * Display a listing of the resource.
+     * Drivers see only their own vehicles (so bid placement uses the correct vehicle_id).
+     * Fleet owners see only vehicles in their fleet.
+     * Admins/shippers see all.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $user = $request->user();
+
+        if ($user?->role === 'driver') {
+            return VehicleResource::collection(Vehicle::where('user_id', $user->id)->get());
+        }
+
+        if ($user?->role === 'fleet_owner') {
+            return VehicleResource::collection(Vehicle::where('fleet_owner_id', $user->id)->get());
+        }
+
         return VehicleResource::collection(Vehicle::all());
+    }
+
+    /**
+     * GET /my-vehicles — current user's own vehicles, camelCase shape.
+     */
+    public function myVehicles()
+    {
+        $vehicles = Vehicle::where('user_id', auth()->id())->get()->map(fn ($v) => [
+            'id'           => $v->id,
+            'truckType'    => $v->truck_type,
+            'plateNumber'  => $v->plate_number,
+            'capacityTons' => $v->capacity,
+            'currentCity'  => $v->current_city,
+            'isAvailable'  => $v->availability_status === 'available',
+        ]);
+        return response()->json(['vehicles' => $vehicles]);
     }
 
     /**

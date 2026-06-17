@@ -16,6 +16,11 @@ class BookingService
 
         $booking = Booking::create($data);
 
+        // Mark the cargo request as matched so it's no longer shown as available
+        if ($booking->cargoRequest) {
+            $booking->cargoRequest->update(['status' => 'matched']);
+        }
+
         if ($booking->driver) {
             $booking->driver->notify(new BookingCreatedNotification($booking));
         }

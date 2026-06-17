@@ -40,14 +40,18 @@ class AiEngineService
 
     protected function post($endpoint, $payload)
     {
-        $response = Http::post($this->baseUrl . $endpoint, $payload);
-        if ($response->successful()) {
-            return $response->json();
+        try {
+            $response = Http::timeout(5)->post($this->baseUrl . $endpoint, $payload);
+            if ($response->successful()) {
+                return $response->json();
+            }
+            return [
+                'error' => true,
+                'message' => $response->body(),
+                'status' => $response->status(),
+            ];
+        } catch (\Exception $e) {
+            return ['error' => true, 'message' => $e->getMessage()];
         }
-        return [
-            'error' => true,
-            'message' => $response->body(),
-            'status' => $response->status(),
-        ];
     }
 }

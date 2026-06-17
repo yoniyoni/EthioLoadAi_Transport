@@ -9,11 +9,14 @@ class CargoRequest extends Model
     protected $fillable = [
         'user_id',
         'pickup_location',
+        'pickup_latitude',
+        'pickup_longitude',
         'destination',
         'material_type',
         'weight',
         'urgency_level',
         'budget',
+        'price_type',
         'status',
     ];
 
@@ -25,5 +28,10 @@ class CargoRequest extends Model
     public function bookings()
     {
         return $this->hasOne(Booking::class);
+    }
+
+    public function bids()
+    {
+        return $this->hasMany(Bid::class);
     }
 }

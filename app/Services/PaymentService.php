@@ -14,7 +14,7 @@ class PaymentService
             'booking_id' => $booking->id,
             'amount' => $booking->estimated_price,
             'payment_method' => $paymentDetails['payment_method'] ?? 'in_app',
-            'payment_status' => 'completed',
+            'payment_status' => 'paid',   // enum: pending | paid | failed
         ]);
 
         $booking->update(['booking_status' => 'confirmed']);

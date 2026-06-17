@@ -13,6 +13,7 @@ class Booking extends Model
         'cargo_id',
         'vehicle_id',
         'driver_id',
+        'bid_id',
         'booking_status',
         'estimated_price',
         'commission_fee',
@@ -24,10 +25,10 @@ class Booking extends Model
     |--------------------------------------------------------------------------
     */
 
-    // Booking belongs to Cargo Request
+    // Booking belongs to Cargo Request — FK is cargo_id not cargo_request_id
     public function cargoRequest()
     {
-        return $this->belongsTo(CargoRequest::class);
+        return $this->belongsTo(CargoRequest::class, 'cargo_id');
     }
 
     // Booking belongs to Vehicle
@@ -58,5 +59,11 @@ class Booking extends Model
     public function rating()
     {
         return $this->hasOne(Rating::class);
+    }
+
+    // Booking was created from this Bid
+    public function bid()
+    {
+        return $this->belongsTo(Bid::class);
     }
 }

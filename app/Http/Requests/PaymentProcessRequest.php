@@ -23,8 +23,8 @@ class PaymentProcessRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'booking_id' => 'required|exists:bookings,id',
-            'payment_method' => 'required|string|in:in_app,cash,bank_transfer',
+            'booking_id'     => 'required|exists:bookings,id',
+            'payment_method' => 'required|string|in:in_app,cash,bank_transfer,telebirr,cbe_birr,chapa',
         ];
     }
 }

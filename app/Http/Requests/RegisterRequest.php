@@ -25,9 +25,9 @@ class RegisterRequest extends FormRequest
         return [
             'full_name' => 'required|string|max:255',
             'phone' => 'required|string|unique:users,phone',
-            'email' => 'required|email|unique:users,email',
+            'email' => 'nullable|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:shipper,driver,admin',
+            'role' => 'required|in:shipper,driver,admin,fleet_owner',
         ];
     }
 }

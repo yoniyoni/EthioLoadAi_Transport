@@ -28,8 +28,9 @@ class CargoCreateRequest extends FormRequest
             'material_type' => 'required|string|max:255',
             'weight' => 'required|numeric',
             'urgency_level' => 'required|string|max:255',
-            'budget' => 'nullable|numeric',
-            'status' => 'sometimes|in:pending,matched,completed',
+            'budget'     => 'nullable|numeric',
+            'price_type' => 'nullable|in:fixed,negotiable',
+            'status'     => 'sometimes|in:pending,matched,completed',
         ];
     }
 }

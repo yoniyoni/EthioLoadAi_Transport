@@ -14,7 +14,7 @@ class TripUpdateStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'trip_status' => 'required|string|in:in_transit,completed,cancelled',
+            'trip_status' => 'required|string|in:ongoing,completed',
         ];
     }
 }

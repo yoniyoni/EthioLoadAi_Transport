@@ -11,6 +11,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome 6 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- Chart.js -->
@@ -20,6 +22,11 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Pusher & Laravel Echo -->
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.1/dist/echo.iife.js"></script>
     
     @stack('styles')
     
@@ -542,6 +549,12 @@
                 </a>
             </div>
             <div class="nav-item">
+                <a href="#" class="nav-link-custom" data-section="livetracking">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span>Live Tracking</span>
+                </a>
+            </div>
+            <div class="nav-item">
                 <a href="#" class="nav-link-custom" data-section="backhaul">
                     <i class="fas fa-exchange-alt"></i>
                     <span>Backhaul AI</span>
@@ -736,6 +749,9 @@
                     break;
                 case 'trips':
                     request = loadTrips();
+                    break;
+                case 'livetracking':
+                    request = loadLiveTracking();
                     break;
                 case 'backhaul':
                     request = loadBackhaul();
@@ -1168,6 +1184,75 @@
             return $.Deferred().resolve();
         }
 
+        let liveMap = null;
+        let truckMarkers = {};
+
+        function loadLiveTracking() {
+            const content = `
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-bold mb-0">Live GPS Tracking</h4>
+                        <div>
+                            <input type="text" id="trackTripId" class="form-control form-control-sm d-inline-block w-auto" placeholder="Trip ID">
+                            <button class="btn btn-sm btn-primary" onclick="startTracking()">Track Trip</button>
+                        </div>
+                    </div>
+                    <div id="liveMapContainer" style="height: 500px; border-radius: 8px; border: 1px solid #ddd;"></div>
+                </div>
+            `;
+            $('#adminContent').html(content);
+
+            // Initialize Leaflet Map
+            if (liveMap !== null) {
+                liveMap.remove();
+            }
+            liveMap = L.map('liveMapContainer').setView([9.0192, 38.7525], 6); // Centered on Ethiopia
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(liveMap);
+
+            return $.Deferred().resolve();
+        }
+
+        window.startTracking = function() {
+            const tripId = $('#trackTripId').val();
+            if (!tripId) return alert('Enter a Trip ID');
+
+            if (!window.Echo) {
+                alert("WebSocket not configured. Please refresh.");
+                return;
+            }
+
+            // Fetch initial trip data to plot current location
+            adminRequest('GET', `/trips/${tripId}`)
+                .done(data => {
+                    let gps = { lat: 9.0192, lng: 38.7525 };
+                    try {
+                        const parsed = JSON.parse(data.trip.gps_tracking_data);
+                        if (parsed && parsed.lat && parsed.lng) gps = parsed;
+                    } catch (e) {}
+
+                    if (truckMarkers[tripId]) liveMap.removeLayer(truckMarkers[tripId]);
+                    
+                    truckMarkers[tripId] = L.marker([gps.lat, gps.lng]).addTo(liveMap)
+                        .bindPopup(`<b>Trip ${tripId}</b><br>Status: ${data.trip.trip_status}`).openPopup();
+                    
+                    liveMap.flyTo([gps.lat, gps.lng], 14);
+
+                    // Subscribe to the private trip channel
+                    window.Echo.private(`trip.${tripId}`)
+                        .listen('TripLocationUpdated', (e) => {
+                            console.log('Location update received:', e);
+                            const newLatLng = [e.lat, e.lng];
+                            truckMarkers[tripId].setLatLng(newLatLng);
+                            liveMap.panTo(newLatLng);
+                        });
+                    
+                    alert(`Started live tracking for Trip ${tripId}`);
+                })
+                .fail(() => alert('Trip not found or access denied.'));
+        };
+
         function loadRatings() {
             return adminRequest('GET', '/ratings')
                 .done(data => {
@@ -1472,5 +1557,27 @@
     </script>
     
     @stack('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof Pusher !== 'undefined' && typeof Echo !== 'undefined') {
+                window.Pusher = Pusher;
+                const apiToken = document.querySelector('meta[name="api-token"]')?.getAttribute('content');
+                window.Echo = new Echo({
+                    broadcaster: 'reverb',
+                    key: '{{ env("REVERB_APP_KEY", "ethioloadai_key") }}',
+                    wsHost: window.location.hostname,
+                    wsPort: {{ env('REVERB_PORT', 8080) }},
+                    wssPort: {{ env('REVERB_PORT', 8080) }},
+                    forceTLS: false,
+                    enabledTransports: ['ws', 'wss'],
+                    auth: {
+                        headers: {
+                            Authorization: 'Bearer ' + apiToken
+                        }
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

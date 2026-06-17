@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\TripCreateRequest;
 use App\Http\Requests\TripUpdateStatusRequest;
 use App\Http\Requests\TripLocationUpdateRequest;
+use App\Jobs\GenerateBackhaulRecommendations;
 use App\Models\Booking;
 use App\Models\Trip;
 use App\Services\TripService;
@@ -17,6 +18,37 @@ class TripController extends Controller
     public function __construct(TripService $tripService)
     {
         $this->tripService = $tripService;
+    }
+
+    /**
+     * GET /trips  — Admin only: list all trips with booking + cargo + driver info.
+     */
+    public function index()
+    {
+        $trips = Trip::with([
+            'booking.cargoRequest',
+            'booking.driver',
+            'booking.vehicle',
+            'tripStops.cargoRequest',
+        ])->latest()->take(50)->get();
+
+        return response()->json([
+            'data' => $trips->map(fn (Trip $trip) => array_merge($trip->toArray(), [
+                'total_amount'          => $trip->total_amount,
+                'total_amount_formatted' => 'ETB ' . number_format($trip->total_amount, 0, '.', ','),
+                'stops'                 => $trip->tripStops->map(fn ($s) => [
+                    'id'             => $s->id,
+                    'stop_order'     => $s->stop_order,
+                    'location_name'  => $s->location_name,
+                    'agreed_price'   => $s->agreed_price,
+                    'status'         => $s->status,
+                    'cargo_material' => $s->cargoRequest?->material_type,
+                    'cargo_weight'   => $s->cargoRequest?->weight,
+                    'arrived_at'     => $s->arrived_at,
+                    'completed_at'   => $s->completed_at,
+                ]),
+            ]))->values(),
+        ]);
     }
 
     public function store(TripCreateRequest $request)
@@ -34,9 +66,13 @@ class TripController extends Controller
 
         $trip = $this->tripService->startTrip($booking);
 
+        // Generate backhaul recommendations asynchronously (non-blocking)
+        GenerateBackhaulRecommendations::dispatch($trip);
+
         return response()->json([
             'message' => 'Trip started successfully',
-            'data' => $trip
+            'data'    => $trip,
+            'backhaul_recommendations_pending' => true,
         ], 201);
     }
 

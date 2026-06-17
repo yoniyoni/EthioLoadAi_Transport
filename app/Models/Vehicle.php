@@ -8,6 +8,7 @@ class Vehicle extends Model
 {
     protected $fillable = [
         'user_id',
+        'fleet_owner_id',
         'truck_type',
         'plate_number',
         'capacity',
@@ -21,6 +22,11 @@ class Vehicle extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function fleetOwner()
+    {
+        return $this->belongsTo(User::class, 'fleet_owner_id');
     }
 
     public function bookings()
