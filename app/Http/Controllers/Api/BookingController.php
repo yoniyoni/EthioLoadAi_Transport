@@ -26,7 +26,7 @@ class BookingController extends Controller
     {
         $user = auth()->user();
 
-        $with = ['cargoRequest.user', 'driver', 'vehicle', 'trip.tripStops.cargoRequest', 'rating'];
+        $with = ['cargoRequest.user', 'driver', 'vehicle', 'trip.tripStops.cargoRequest', 'rating', 'payment'];
 
         if ($user->is_admin) {
             return BookingResource::collection(Booking::with($with)->get());
