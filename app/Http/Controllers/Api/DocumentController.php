@@ -158,7 +158,10 @@ class DocumentController extends Controller
         if ($approvedCount >= count($required)) {
             $user = User::find($userId);
             if ($user && !$user->verification_status) {
-                $user->update(['verification_status' => true]);
+                $user->update([
+                    'verification_status' => true,
+                    'is_active'           => true,
+                ]);
                 return true;
             }
         }

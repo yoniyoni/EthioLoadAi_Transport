@@ -12,13 +12,19 @@ class AuthController extends Controller
     public function register(RegisterRequest $request)
     {
         $validated = $request->validated();
+        $isDriver = $validated['role'] === 'driver';
+
         $user = \App\Models\User::create([
-            'name'      => $validated['full_name'],
-            'full_name' => $validated['full_name'],
-            'phone'     => $validated['phone'],
-            'email'     => $validated['email'] ?? null,
-            'password'  => $validated['password'],
-            'role'      => $validated['role'],
+            'name'                => $validated['full_name'],
+            'full_name'           => $validated['full_name'],
+            'phone'               => $validated['phone'],
+            'email'               => $validated['email'] ?? null,
+            'password'            => $validated['password'],
+            'role'                => $validated['role'],
+            // Drivers start inactive until all 5 documents are admin-approved.
+            // Shippers and fleet owners are active immediately.
+            'is_active'           => !$isDriver,
+            'verification_status' => !$isDriver,
         ]);
         $token = $user->createToken('api-token')->plainTextToken;
         return response()->json([
