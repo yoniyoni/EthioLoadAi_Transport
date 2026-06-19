@@ -10,6 +10,7 @@ use App\Jobs\GenerateBackhaulRecommendations;
 use App\Models\Booking;
 use App\Models\Trip;
 use App\Services\TripService;
+use Illuminate\Support\Facades\Log;
 
 class TripController extends Controller
 {
@@ -88,14 +89,25 @@ class TripController extends Controller
         if ($request->trip_status === 'completed') {
             try {
                 $trip = $this->tripService->completeTrip($trip);
+                $trip->load('booking');
             } catch (\Throwable $e) {
+                Log::error('Trip completion failed', [
+                    'trip_id' => $id,
+                    'error'   => $e->getMessage(),
+                    'trace'   => $e->getTraceAsString(),
+                ]);
                 return response()->json(['message' => $e->getMessage()], 422);
             }
         } else {
             $trip->update(['trip_status' => $request->trip_status]);
         }
 
-        return response()->json(['data' => $trip]);
+        return response()->json([
+            'data' => array_merge($trip->toArray(), [
+                'booking_estimated_price' => $trip->booking?->estimated_price,
+                'booking_commission_fee'  => $trip->booking?->commission_fee,
+            ]),
+        ]);
     }
 
     public function updateLocation(TripLocationUpdateRequest $request, string $id)
