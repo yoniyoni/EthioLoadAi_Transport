@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Services;
 
@@ -13,18 +13,53 @@ class BackhaulService
     // Ethiopian corridor cities: each entry lists accepted name variants and coordinates.
     private static array $CITIES = [
         ['names' => ['addis ababa', 'addis abeba', 'addis'], 'lat' => 9.03,  'lng' => 38.74],
-        ['names' => ['mekele', 'mekelle', 'mekелe'],         'lat' => 13.49, 'lng' => 39.47],
-        ['names' => ['gondar', 'gonder'],                     'lat' => 12.60, 'lng' => 37.47],
-        ['names' => ['bahir dar', 'bahar dar', 'bahirdar'],   'lat' => 11.59, 'lng' => 37.39],
-        ['names' => ['dire dawa', 'diredawa'],                'lat' => 9.59,  'lng' => 41.86],
-        ['names' => ['hawassa', 'awasa'],                     'lat' => 7.06,  'lng' => 38.47],
-        ['names' => ['jimma', 'jima'],                        'lat' => 7.67,  'lng' => 36.83],
-        ['names' => ['metema'],                               'lat' => 12.85, 'lng' => 36.20],
-        ['names' => ['humera', 'humer'],                      'lat' => 14.30, 'lng' => 36.61],
-        ['names' => ['shire', 'shire indasilase'],            'lat' => 14.10, 'lng' => 38.28],
-        ['names' => ['addis zemen'],                          'lat' => 12.13, 'lng' => 37.79],
-        ['names' => ['debre tabor', 'debretabor'],            'lat' => 11.85, 'lng' => 38.01],
-        ['names' => ['debre markos', 'debremarkos'],          'lat' => 10.33, 'lng' => 37.72],
+        ['names' => ['mekele', 'mekelle'],                    'lat' => 13.49, 'lng' => 39.47],
+        ['names' => ['gondar', 'gonder'],                   'lat' => 12.60, 'lng' => 37.47],
+        ['names' => ['bahir dar', 'bahar dar', 'bahirdar'], 'lat' => 11.59, 'lng' => 37.39],
+        ['names' => ['dire dawa', 'diredawa'],              'lat' => 9.59,  'lng' => 41.86],
+        ['names' => ['hawassa', 'awasa'],                   'lat' => 7.06,  'lng' => 38.47],
+        ['names' => ['jimma', 'jima'],                      'lat' => 7.67,  'lng' => 36.83],
+        // North / Tigray corridor
+        ['names' => ['metema'],                             'lat' => 12.85, 'lng' => 36.20],
+        ['names' => ['humera', 'humer'],                    'lat' => 14.30, 'lng' => 36.61],
+        ['names' => ['shire endaselassie', 'shire indasilase', 'shire'], 'lat' => 14.10, 'lng' => 38.28],
+        ['names' => ['adigrat'],                            'lat' => 14.27, 'lng' => 39.46],
+        ['names' => ['axum', 'aksum'],                      'lat' => 14.13, 'lng' => 38.72],
+        ['names' => ['adwa'],                               'lat' => 14.17, 'lng' => 38.89],
+        // Amhara / Lake Tana corridor
+        ['names' => ['addis zemen'],                        'lat' => 12.13, 'lng' => 37.79],
+        ['names' => ['maksegnit'],                          'lat' => 12.51, 'lng' => 37.52],
+        ['names' => ['woreta'],                             'lat' => 11.91, 'lng' => 37.70],
+        ['names' => ['debre tabor', 'debretabor'],          'lat' => 11.85, 'lng' => 38.01],
+        ['names' => ['motta'],                              'lat' => 11.07, 'lng' => 37.87],
+        ['names' => ['injibara'],                           'lat' => 10.93, 'lng' => 36.94],
+        ['names' => ['debre markos', 'debremarkos'],        'lat' => 10.33, 'lng' => 37.72],
+        // North-East corridor
+        ['names' => ['dessie', 'desse'],                    'lat' => 11.13, 'lng' => 39.63],
+        ['names' => ['woldia', 'woldiya'],                  'lat' => 11.82, 'lng' => 39.60],
+        ['names' => ['debre birhan', 'debrebirhan'],        'lat' => 9.68,  'lng' => 39.53],
+        // Central / Addis surroundings
+        ['names' => ['adama / nazret', 'adama', 'nazret'],  'lat' => 8.54,  'lng' => 39.27],
+        ['names' => ['bishoftu', 'debre zeyt', 'debre zeit', 'debrezeit'], 'lat' => 8.75, 'lng' => 38.98],
+        ['names' => ['holeta'],                             'lat' => 9.05,  'lng' => 38.51],
+        ['names' => ['sebeta'],                             'lat' => 8.91,  'lng' => 38.62],
+        // East / Harari
+        ['names' => ['harar', 'harer'],                     'lat' => 9.31,  'lng' => 42.12],
+        ['names' => ['jijiga', 'jigjiga'],                  'lat' => 9.35,  'lng' => 42.79],
+        ['names' => ['kebri dahar', 'kebridahar'],          'lat' => 6.73,  'lng' => 44.27],
+        // South / SNNP
+        ['names' => ['shashemene', 'shashamane'],           'lat' => 7.20,  'lng' => 38.60],
+        ['names' => ['dilla'],                              'lat' => 6.41,  'lng' => 38.31],
+        ['names' => ['wolaita sodo', 'wolayta sodo', 'sodo / wolaita', 'sodo'], 'lat' => 6.85, 'lng' => 37.75],
+        ['names' => ['arba minch', 'arbaminch'],            'lat' => 6.04,  'lng' => 37.55],
+        ['names' => ['moyale'],                             'lat' => 3.53,  'lng' => 39.05],
+        // West
+        ['names' => ['nekemte', 'naqamte'],                 'lat' => 9.09,  'lng' => 36.55],
+        ['names' => ['assosa', 'asosa'],                    'lat' => 10.07, 'lng' => 34.53],
+        ['names' => ['gambela', 'gambella'],                'lat' => 8.25,  'lng' => 34.59],
+        // South-East / Bale
+        ['names' => ['bale robe', 'robe', 'balerobe'],      'lat' => 7.12,  'lng' => 40.00],
+        ['names' => ['goba'],                               'lat' => 7.00,  'lng' => 39.98],
     ];
 
     /**
@@ -65,11 +100,11 @@ class BackhaulService
             [$pickLat, $pickLng] = $pickupCoords;
             $distanceKm = $this->haversine($destLat, $destLng, $pickLat, $pickLng);
 
-            if ($distanceKm > 50) {
-                return null; // outside 50 km radius
+            if ($distanceKm > 100) {
+                return null; // outside 100 km radius
             }
 
-            $distanceScore = max(0.0, 1.0 - ($distanceKm / 50.0));
+            $distanceScore = max(0.0, 1.0 - ($distanceKm / 100.0));
 
             $urgencyScore = match (strtolower($cargo->urgency_level ?? 'normal')) {
                 'urgent', 'express' => 1.0,
