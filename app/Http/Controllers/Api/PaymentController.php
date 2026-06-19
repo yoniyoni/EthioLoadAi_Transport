@@ -22,22 +22,29 @@ class PaymentController extends Controller
     {
         $booking = Booking::findOrFail($request->booking_id);
 
-        // Basic authorization - only the shipper or driver can process the payment (or admin)
-        $user = auth()->user();
-        $canPay = $user->is_admin
-            || $booking->driver_id === $user->id
-            || ($booking->cargoRequest && $booking->cargoRequest->user_id === $user->id);
+        $user      = auth()->user();
+        $isShipper = $booking->cargoRequest && $booking->cargoRequest->user_id === $user->id;
+        $isDriver  = $booking->driver_id === $user->id;
 
-        if (!$canPay) {
-            return response()->json(['message' => 'Forbidden'], 403);
+        if (!$user->is_admin && !$isShipper && !$isDriver) {
+            return response()->json([
+                'message' => 'Only the shipper or driver can record a payment for this booking.',
+            ], 403);
+        }
+
+        if ($booking->booking_status !== 'delivered') {
+            return response()->json(['message' => 'Payment can only be made after the cargo has been delivered.'], 422);
         }
 
         // Check if payment already exists
         if ($booking->payment) {
-            return response()->json(['message' => 'Payment already processed for this booking'], 400);
+            return response()->json(['message' => 'Payment already processed for this booking.'], 400);
         }
 
-        $payment = $this->paymentService->processPayment($booking, $request->validated());
+        $payment = $this->paymentService->processPayment($booking, array_merge(
+            $request->validated(),
+            ['paid_by' => $user->id]
+        ));
 
         return response()->json([
             'message' => 'Payment processed successfully',

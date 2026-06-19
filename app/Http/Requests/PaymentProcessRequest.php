@@ -24,7 +24,7 @@ class PaymentProcessRequest extends FormRequest
     {
         return [
             'booking_id'     => 'required|exists:bookings,id',
-            'payment_method' => 'required|string|in:in_app,cash,bank_transfer,telebirr,cbe_birr,chapa',
+            'payment_method' => 'required|string|in:in_app,cash,bank_transfer,telebirr,cbe_birr,chapa,awash_bank,dashen_bank',
         ];
     }
 }

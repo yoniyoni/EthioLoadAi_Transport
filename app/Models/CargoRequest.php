@@ -17,7 +17,12 @@ class CargoRequest extends Model
         'urgency_level',
         'budget',
         'price_type',
+        'bid_deadline',
         'status',
+    ];
+
+    protected $casts = [
+        'bid_deadline' => 'datetime',
     ];
 
     public function user()

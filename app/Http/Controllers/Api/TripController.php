@@ -86,7 +86,11 @@ class TripController extends Controller
         }
 
         if ($request->trip_status === 'completed') {
-            $trip = $this->tripService->completeTrip($trip);
+            try {
+                $trip = $this->tripService->completeTrip($trip);
+            } catch (\Throwable $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
         } else {
             $trip->update(['trip_status' => $request->trip_status]);
         }

@@ -24,6 +24,10 @@ class BidService
             throw new \Exception('This cargo is no longer accepting bids.');
         }
 
+        if ($cargo->bid_deadline && now()->gt($cargo->bid_deadline)) {
+            throw new \Exception('The bid deadline has passed. Bidding is closed for this cargo.');
+        }
+
         if (($cargo->price_type ?? 'negotiable') === 'fixed') {
             throw new \Exception('This cargo has a fixed price. Use "Accept Price" to book it directly.');
         }
@@ -173,14 +177,14 @@ class BidService
 
             $bid->cargoRequest()->update(['status' => 'matched']);
 
-            $commission = round((float) $bid->counter_amount * 0.06, 2);
+            $commission = round((float) $bid->counter_amount * 0.10, 2);
 
             return Booking::create([
                 'cargo_id'        => $bid->cargo_request_id,
                 'vehicle_id'      => $bid->vehicle_id,
                 'driver_id'       => $bid->driver_id,
                 'bid_id'          => $bid->id,
-                'booking_status'  => 'confirmed',
+                'booking_status'  => 'accepted',
                 'estimated_price' => $bid->counter_amount,
                 'commission_fee'  => $commission,
             ]);
@@ -197,19 +201,19 @@ class BidService
 
             Bid::where('cargo_request_id', $bid->cargo_request_id)
                 ->where('id', '!=', $bid->id)
-                ->where('status', 'pending')
+                ->whereIn('status', ['pending', 'countered'])
                 ->update(['status' => 'rejected']);
 
             $bid->cargoRequest()->update(['status' => 'matched']);
 
-            $commission = round((float) $bid->amount * 0.06, 2);
+            $commission = round((float) $bid->amount * 0.10, 2);
 
             return Booking::create([
                 'cargo_id'        => $bid->cargo_request_id,
                 'vehicle_id'      => $bid->vehicle_id,
                 'driver_id'       => $bid->driver_id,
                 'bid_id'          => $bid->id,
-                'booking_status'  => 'confirmed',
+                'booking_status'  => 'accepted',
                 'estimated_price' => $bid->amount,
                 'commission_fee'  => $commission,
             ]);
