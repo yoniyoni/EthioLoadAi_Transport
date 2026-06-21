@@ -58,10 +58,10 @@ class TripService
 
         // For multi-stop trips, recalculate commission on total_amount
         $totalAmount = $trip->total_amount;
-        $bookingUpdates = ['booking_status' => 'completed'];
+        $bookingUpdates = ['booking_status' => 'delivered'];
         if ($trip->isMultiStop() && $totalAmount > 0) {
             $bookingUpdates['estimated_price'] = $totalAmount;
-            $bookingUpdates['commission_fee']  = round($totalAmount * 0.06, 2);
+            $bookingUpdates['commission_fee']  = round($totalAmount * 0.10, 2);
         }
         $trip->booking->update($bookingUpdates);
 

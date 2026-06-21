@@ -85,10 +85,22 @@ class BidController extends Controller
             return response()->json(['message' => 'This bid is no longer pending.'], 422);
         }
 
+        // Collect competing bids before the transaction wipes their status
+        $otherActiveBids = Bid::where('cargo_request_id', $bid->cargo_request_id)
+            ->where('id', '!=', $bid->id)
+            ->whereIn('status', ['pending', 'countered'])
+            ->with(['driver', 'cargoRequest'])
+            ->get();
+
         $booking = $this->bidService->acceptBid($bid);
 
         // Notify the driver (or fleet owner) that their bid was accepted
         $bid->driver?->notify(new BookingCreatedNotification($booking));
+
+        // Notify every driver whose bid was auto-rejected
+        foreach ($otherActiveBids as $rejected) {
+            $rejected->driver?->notify(new BidRejectedNotification($rejected, 'cargo_taken'));
+        }
 
         return response()->json([
             'success' => true,
@@ -166,6 +178,13 @@ class BidController extends Controller
     {
         $actor = auth()->user();
 
+        // Collect competing bids before the transaction wipes their status
+        $otherActiveBids = Bid::where('cargo_request_id', $bid->cargo_request_id)
+            ->where('id', '!=', $bid->id)
+            ->whereIn('status', ['pending', 'countered'])
+            ->with(['driver', 'cargoRequest'])
+            ->get();
+
         try {
             $booking = $this->bidService->acceptCounter($bid, $actor);
         } catch (\Exception $e) {
@@ -175,10 +194,15 @@ class BidController extends Controller
         // Notify the other party that the counter-offer was accepted and a booking is confirmed
         if ($actor->id === $bid->driver_id) {
             // Driver accepted shipper's counter — notify the shipper
-            $bid->cargoRequest?->user?->notify(new BookingCreatedNotification($booking));
+            $bid->cargoRequest?->user?->notify(new BookingCreatedNotification($booking, 'shipper'));
         } else {
             // Shipper accepted driver's counter — notify the driver
             $bid->driver?->notify(new BookingCreatedNotification($booking));
+        }
+
+        // Notify every driver whose bid was auto-rejected
+        foreach ($otherActiveBids as $rejected) {
+            $rejected->driver?->notify(new BidRejectedNotification($rejected, 'cargo_taken'));
         }
 
         return response()->json([

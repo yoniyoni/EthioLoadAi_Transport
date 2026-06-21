@@ -9,12 +9,18 @@ class PaymentService
 {
     public function processPayment(Booking $booking, array $paymentDetails)
     {
-        // For MVP, simulate a successful payment deduction (including commission)
+        $amount     = (float) $booking->estimated_price;
+        $commission = round($amount * 0.10, 2);
+        $driverNet  = round($amount - $commission, 2);
+
         $payment = Payment::create([
-            'booking_id' => $booking->id,
-            'amount' => $booking->estimated_price,
-            'payment_method' => $paymentDetails['payment_method'] ?? 'in_app',
-            'payment_status' => 'paid',   // enum: pending | paid | failed
+            'booking_id'        => $booking->id,
+            'amount'            => $amount,
+            'commission_amount' => $commission,
+            'driver_net_amount' => $driverNet,
+            'paid_by'           => $paymentDetails['paid_by'] ?? null,
+            'payment_method'    => $paymentDetails['payment_method'] ?? 'cash',
+            'payment_status'    => 'paid',
         ]);
 
         $booking->update(['booking_status' => 'confirmed']);

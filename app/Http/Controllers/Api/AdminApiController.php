@@ -402,7 +402,7 @@ class AdminApiController extends Controller
     // GET /trips
     public function trips()
     {
-        $trips = Trip::with(['booking.cargoRequest', 'booking.driver', 'booking.vehicle'])
+        $trips = Trip::with(['booking.cargoRequest', 'booking.driver', 'booking.vehicle', 'booking.payment'])
             ->latest()
             ->take(50)
             ->get()
@@ -413,9 +413,11 @@ class AdminApiController extends Controller
                 'created_at'  => $t->created_at,
                 'booking'     => [
                     'estimated_price' => $t->booking?->estimated_price,
+                    'payment_method'  => $t->booking?->payment?->payment_method,
                     'cargo_request'   => [
                         'pickup_location' => $t->booking?->cargoRequest?->pickup_location,
                         'destination'     => $t->booking?->cargoRequest?->destination,
+                        'price_type'      => $t->booking?->cargoRequest?->price_type ?? 'negotiable',
                     ],
                     'driver' => $t->booking?->driver ? [
                         'full_name' => $t->booking->driver->full_name,
