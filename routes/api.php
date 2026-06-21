@@ -100,7 +100,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/payments/{booking_id}', [PaymentController::class, 'show']);
 
     // Bids
-    Route::post('/cargo-requests/{cargo}/book-direct', [CargoRequestController::class, 'bookDirect']);
+    Route::post('/cargo-requests/{cargo}/book-direct',  [CargoRequestController::class, 'bookDirect']);
+    Route::post('/cargo-requests/{cargo}/accept-price', [CargoRequestController::class, 'acceptPrice']);
     Route::get('/cargo-requests/{cargo}/bids',  [BidController::class, 'index']);
     Route::post('/cargo-requests/{cargo}/bids', [BidController::class, 'store']);
     Route::patch('/bids/{bid}',                [BidController::class, 'update']);

@@ -5,14 +5,21 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CargoCreateRequest;
 use App\Http\Requests\CargoUpdateRequest;
+use App\Http\Resources\BidResource;
 use App\Http\Resources\CargoResource;
 use App\Models\Booking;
 use App\Models\CargoRequest;
+use App\Models\Vehicle;
+use App\Notifications\BidPlacedNotification;
+use App\Notifications\BookingCreatedNotification;
 use App\Notifications\FixedPriceBookedNotification;
+use App\Services\BidService;
 use Illuminate\Http\Request;
 
 class CargoRequestController extends Controller
 {
+    public function __construct(protected BidService $bidService) {}
+
     /**
      * Display a listing of the resource.
      */
@@ -194,10 +201,13 @@ class CargoRequestController extends Controller
         $cargo->update(['status' => 'matched']);
         $vehicle->update(['availability_status' => 'busy']);
 
+        $booking->load(['cargoRequest', 'driver']);
+
         // Notify the shipper that their fixed-price cargo has been booked
-        $cargo->user?->notify(new FixedPriceBookedNotification(
-            $booking->load(['cargoRequest', 'driver'])
-        ));
+        $cargo->user?->notify(new FixedPriceBookedNotification($booking));
+
+        // Notify the driver that their booking is confirmed
+        $booking->driver?->notify(new BookingCreatedNotification($booking));
 
         return response()->json([
             'success' => true,
@@ -206,6 +216,54 @@ class CargoRequestController extends Controller
                 $booking->load(['cargoRequest.user', 'driver', 'vehicle'])
             ),
         ], 201);
+    }
+
+    /**
+     * POST /cargo-requests/{cargo}/accept-price
+     * Driver registers interest in a fixed-price offer.
+     * Creates a bid at the fixed budget so multiple drivers can apply;
+     * the shipper reviews all applicants ranked by rating and selects one.
+     */
+    public function acceptPrice(CargoRequest $cargo)
+    {
+        $user = auth()->user();
+
+        if (!$user->verification_status) {
+            return response()->json([
+                'message' => 'Your account is not yet verified.',
+            ], 403);
+        }
+
+        if ($cargo->price_type !== 'fixed') {
+            return response()->json(['message' => 'This cargo is not fixed-price.'], 422);
+        }
+
+        if ($cargo->status !== 'pending') {
+            return response()->json(['message' => 'This cargo is no longer available.'], 422);
+        }
+
+        if (!$cargo->budget) {
+            return response()->json(['message' => 'No price is set for this cargo.'], 422);
+        }
+
+        $vehicle = Vehicle::where('user_id', $user->id)
+            ->where('availability_status', 'available')
+            ->first()
+            ?? Vehicle::where('user_id', $user->id)->first();
+
+        if (!$vehicle) {
+            return response()->json(['message' => 'You have no registered vehicle.'], 422);
+        }
+
+        try {
+            $bid = $this->bidService->acceptFixedPrice($cargo, $user, $vehicle);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $cargo->user?->notify(new BidPlacedNotification($bid->load(['driver', 'cargoRequest'])));
+
+        return (new BidResource($bid->load(['driver', 'vehicle'])))->response()->setStatusCode(201);
     }
 
     /**

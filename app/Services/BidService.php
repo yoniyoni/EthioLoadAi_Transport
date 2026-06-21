@@ -76,6 +76,45 @@ class BidService
     }
 
     /**
+     * Driver registers interest in a fixed-price cargo offer.
+     * Creates a bid at cargo->budget so the shipper can review all applicants
+     * and pick the best one (ranked by rating). Cargo stays 'pending'.
+     *
+     * @throws \Exception
+     */
+    public function acceptFixedPrice(CargoRequest $cargo, User $driver, Vehicle $vehicle): Bid
+    {
+        if ($cargo->status !== 'pending') {
+            throw new \Exception('This cargo is no longer available.');
+        }
+
+        if (Bid::where('cargo_request_id', $cargo->id)->where('driver_id', $driver->id)->exists()) {
+            throw new \Exception('You have already accepted this offer.');
+        }
+
+        $distanceKm = null;
+        if (
+            $cargo->pickup_latitude !== null && $cargo->pickup_longitude !== null &&
+            $vehicle->latitude !== null && $vehicle->longitude !== null
+        ) {
+            $distanceKm = $this->haversine(
+                (float) $vehicle->latitude, (float) $vehicle->longitude,
+                (float) $cargo->pickup_latitude, (float) $cargo->pickup_longitude,
+            );
+        }
+
+        return Bid::create([
+            'cargo_request_id' => $cargo->id,
+            'driver_id'        => $driver->id,
+            'vehicle_id'       => $vehicle->id,
+            'amount'           => $cargo->budget,
+            'note'             => null,
+            'status'           => 'pending',
+            'distance_km'      => $distanceKm,
+        ]);
+    }
+
+    /**
      * Sort bids by amount ASC, then average driver rating DESC as tiebreaker.
      * Marks the top bid's is_recommended = true in-memory only (not persisted).
      *
