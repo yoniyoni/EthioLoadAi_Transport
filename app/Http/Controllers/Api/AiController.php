@@ -90,41 +90,129 @@ class AiController extends Controller
         return response()->json($result);
     }
 
-    // ── Approximate road-distance (km) from Addis Ababa to major cities ──
+    // ── Road distances (km) from Addis Ababa — actual route measurements ──
     private static array $distFromAA = [
-        'Adama'         => 99,
-        'Adama / Nazret'=> 99,
-        'Asella'        => 175,
-        'Awash'         => 225,
-        'Bahir Dar'     => 565,
-        'Bishoftu'      => 50,
-        'Bale Robe'     => 430,
-        'Debre Birhan'  => 130,
-        'Debre Markos'  => 300,
-        'Dessie'        => 401,
-        'Dilla'         => 367,
-        'Dire Dawa'     => 520,
-        'Gambela'       => 769,
-        'Goba'          => 445,
-        'Gondar'        => 738,
-        'Harar'         => 526,
-        'Hawassa'       => 275,
-        'Jijiga'        => 630,
-        'Jimma'         => 346,
-        'Kebri Dahar'   => 840,
-        'Mekele'        => 783,
-        'Moyale'        => 770,
-        'Nekemte'       => 331,
-        'Shashemene'    => 250,
+        'Adama'                => 99,
+        'Adama / Nazret'       => 99,
+        'Asella'               => 175,
+        'Awash'                => 225,
+        'Bahir Dar'            => 565,
+        'Bishoftu'             => 50,
+        'Bale Robe'            => 430,
+        'Debre Birhan'         => 130,
+        'Debre Markos'         => 300,
+        'Dessie'               => 401,
+        'Kombolcha'            => 395,
+        'Dilla'                => 367,
+        'Dire Dawa'            => 515,
+        'Gambela'              => 769,
+        'Goba'                 => 445,
+        'Gondar'               => 738,
+        'Harar'                => 526,
+        'Hawassa'              => 275,
+        'Humera'               => 950,
+        'Jijiga'               => 633,
+        'Jimma'                => 346,
+        'Kebri Dahar'          => 840,
+        'Mekele'               => 783,
+        'Moyale'               => 770,
+        'Nekemte'              => 331,
+        'Shashemene'           => 250,
         'Shire / Endaselassie' => 900,
-        'Axum'          => 1020,
-        'Adigrat'       => 870,
-        'Sodo / Wolaita'=> 370,
-        'Sodo'          => 370,
-        'Woldia'        => 521,
-        'Assosa'        => 668,
-        'Arba Minch'    => 505,
+        'Axum'                 => 1020,
+        'Adigrat'              => 870,
+        'Sodo / Wolaita'       => 370,
+        'Sodo'                 => 370,
+        'Woldia'               => 521,
+        'Assosa'               => 668,
+        'Arba Minch'           => 505,
+        'Ziway'                => 163,
+        'Butajira'             => 170,
+        'Hosanna'              => 230,
+        'Lalibela'             => 696,
+        'Debre Tabor'          => 667,
+        'Wukro'                => 800,
+        'Dangila'              => 580,
     ];
+
+    // ── GPS coordinates (lat, lng) for Haversine city-to-city distances ──
+    private static array $cityCoords = [
+        'Addis Ababa'          => [9.0320,  38.7469],
+        'Adama'                => [8.5400,  39.2700],
+        'Adama / Nazret'       => [8.5400,  39.2700],
+        'Asella'               => [8.0000,  39.1333],
+        'Awash'                => [8.9833,  40.1500],
+        'Bahir Dar'            => [11.5942, 37.3892],
+        'Bishoftu'             => [8.7500,  38.9833],
+        'Bale Robe'            => [7.1167,  40.0167],
+        'Debre Birhan'         => [9.6833,  39.5167],
+        'Debre Markos'         => [10.3500, 37.7333],
+        'Dessie'               => [11.1333, 39.6333],
+        'Kombolcha'            => [11.0833, 39.7333],
+        'Dilla'                => [6.4167,  38.3333],
+        'Dire Dawa'            => [9.5931,  41.8571],
+        'Gambela'              => [8.2500,  34.5833],
+        'Goba'                 => [7.0000,  39.9667],
+        'Gondar'               => [12.6030, 37.4670],
+        'Harar'                => [9.3125,  42.1181],
+        'Hawassa'              => [7.0504,  38.4955],
+        'Humera'               => [14.2730, 36.5820],
+        'Jijiga'               => [9.3500,  42.8000],
+        'Jimma'                => [7.6710,  36.8342],
+        'Kebri Dahar'          => [6.7333,  44.2833],
+        'Mekele'               => [13.4967, 39.4764],
+        'Moyale'               => [3.5333,  39.0500],
+        'Nekemte'              => [9.0833,  36.5500],
+        'Shashemene'           => [7.2033,  38.5931],
+        'Shire / Endaselassie' => [14.1002, 37.0668],
+        'Axum'                 => [14.1267, 38.7289],
+        'Adigrat'              => [14.2750, 39.4667],
+        'Sodo / Wolaita'       => [6.8500,  37.7500],
+        'Sodo'                 => [6.8500,  37.7500],
+        'Woldia'               => [11.8167, 39.6000],
+        'Assosa'               => [10.0667, 34.5333],
+        'Arba Minch'           => [6.0333,  37.5500],
+        'Ziway'                => [7.9333,  38.7167],
+        'Butajira'             => [8.1333,  38.3667],
+        'Hosanna'              => [7.5500,  37.8500],
+        'Lalibela'             => [12.0317, 39.0472],
+        'Debre Tabor'          => [11.8500, 38.0167],
+        'Wukro'                => [13.7833, 39.6000],
+        'Dangila'              => [11.2667, 36.8333],
+    ];
+
+    private static function haversineKm(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $R    = 6371.0;
+        $phi1 = deg2rad($lat1);
+        $phi2 = deg2rad($lat2);
+        $dphi = deg2rad($lat2 - $lat1);
+        $dlam = deg2rad($lon2 - $lon1);
+        $a    = sin($dphi / 2) ** 2 + cos($phi1) * cos($phi2) * sin($dlam / 2) ** 2;
+        return 2 * $R * asin(sqrt($a));
+    }
+
+    private static function roadDistKm(string $nFrom, string $nTo): int
+    {
+        $aa = 'Addis Ababa';
+        if ($nFrom === $aa && $nTo === $aa) return 0;
+        if ($nFrom === $aa || $nFrom === '') return self::$distFromAA[$nTo]  ?? 400;
+        if ($nTo   === $aa || $nTo   === '') return self::$distFromAA[$nFrom] ?? 400;
+
+        $cf = self::$cityCoords[$nFrom] ?? null;
+        $ct = self::$cityCoords[$nTo]   ?? null;
+        if ($cf && $ct) {
+            $straight = self::haversineKm($cf[0], $cf[1], $ct[0], $ct[1]);
+            return max(10, (int) round($straight * 1.6));
+        }
+
+        $df = self::$distFromAA[$nFrom] ?? null;
+        $dt = self::$distFromAA[$nTo]   ?? null;
+        if ($df && $dt) {
+            return (int) round(abs($df - $dt) + min($df, $dt) * 0.3);
+        }
+        return $df ?? ($dt ?? 400);
+    }
 
     private function normalizeCity(string $raw): string
     {
@@ -149,22 +237,9 @@ class AiController extends Controller
 
     private function localPriceEstimate(string $from, string $to, float $weight, string $urgency, string $material = ''): array
     {
-        $nFrom = $this->normalizeCity($from);
-        $nTo   = $this->normalizeCity($to);
-
-        $dFromAA = self::$distFromAA[$nFrom] ?? null;
-        $dToAA   = self::$distFromAA[$nTo]   ?? null;
-
-        if ($nFrom === 'Addis Ababa' || $nFrom === '') {
-            $distKm = $dToAA ?? 400;
-        } elseif ($nTo === 'Addis Ababa' || $nTo === '') {
-            $distKm = $dFromAA ?? 400;
-        } elseif ($dFromAA && $dToAA) {
-            // Triangle via Addis Ababa — acceptable approximation for Ethiopian road network
-            $distKm = (int) round(($dFromAA + $dToAA) * 0.75);
-        } else {
-            $distKm = $dFromAA ?? ($dToAA ?? 400);
-        }
+        $nFrom  = $this->normalizeCity($from);
+        $nTo    = $this->normalizeCity($to);
+        $distKm = self::roadDistKm($nFrom, $nTo);
 
         $rateMin = (float) PlatformSetting::get('pricing.rate_min', 18);
         $rateMax = (float) PlatformSetting::get('pricing.rate_max', 28);
@@ -266,15 +341,10 @@ class AiController extends Controller
 
     private function distBetween(string $cityA, string $cityB): int
     {
-        $nA = $this->normalizeCity($cityA);
-        $nB = $this->normalizeCity($cityB);
-        $dA = self::$distFromAA[$nA] ?? null;
-        $dB = self::$distFromAA[$nB] ?? null;
-
-        if ($nA === 'Addis Ababa' || $nA === '') return $dB ?? 400;
-        if ($nB === 'Addis Ababa' || $nB === '') return $dA ?? 400;
-        if ($dA && $dB) return (int) round(($dA + $dB) * 0.75);
-        return $dA ?? ($dB ?? 400);
+        return self::roadDistKm(
+            $this->normalizeCity($cityA),
+            $this->normalizeCity($cityB),
+        );
     }
 
     private function localEmptyReturnEstimate(string $destination): array

@@ -21,11 +21,12 @@ use App\Http\Controllers\Api\TripStopController;
 use App\Http\Controllers\Api\AdminSettingsController;
 use App\Http\Controllers\Api\BackhaulRecommendationController;
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-
-// Admin panel compatibility login (returns {token, user} shape matching the React admin)
-Route::post('/auth/login', [AdminApiController::class, 'login']);
+Route::middleware('throttle:login')->group(function () {
+    Route::post('/register',    [AuthController::class,      'register']);
+    Route::post('/login',       [AuthController::class,      'login']);
+    // Admin panel login
+    Route::post('/auth/login',  [AdminApiController::class,  'login']);
+});
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);

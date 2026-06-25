@@ -31,8 +31,8 @@ class RatingController extends Controller
             return response()->json(['message' => 'Only the shipper can rate a completed delivery.'], 403);
         }
 
-        if ($booking->booking_status !== 'completed') {
-            return response()->json(['message' => 'Can only rate completed bookings.'], 422);
+        if (!in_array($booking->booking_status, ['completed', 'delivered', 'confirmed'])) {
+            return response()->json(['message' => 'Can only rate a completed booking.'], 422);
         }
 
         if (Rating::where('booking_id', $booking->id)->where('rater_id', $user->id)->exists()) {

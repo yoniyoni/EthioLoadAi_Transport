@@ -310,6 +310,8 @@ class CargoRequestController extends Controller
 
     /**
      * Remove the specified resource from storage.
+     * Only allowed while cargo is still pending (no booking exists).
+     * Notifies any drivers who placed bids so they aren't left waiting.
      */
     public function destroy(string $id)
     {
@@ -321,10 +323,25 @@ class CargoRequestController extends Controller
         }
 
         if (!$user->is_admin && $cargoRequest->status !== 'pending') {
-            return response()->json(['message' => 'Only pending cargo can be deleted.'], 422);
+            return response()->json(['message' => 'Only pending cargo can be cancelled. A booking already exists for this cargo.'], 422);
         }
 
+        // Notify every driver who bid on this cargo, then remove their bids
+        $pendingBids = $cargoRequest->bids()
+            ->with('driver')
+            ->whereIn('status', ['pending', 'countered'])
+            ->get();
+
+        foreach ($pendingBids as $bid) {
+            $bid->driver?->notify(
+                new \App\Notifications\BidRejectedNotification($bid, 'cargo_cancelled')
+            );
+        }
+
+        // Remove all bids (FK constraint) then delete the cargo
+        $cargoRequest->bids()->delete();
         $cargoRequest->delete();
-        return response()->json(['message' => 'Cargo deleted successfully.']);
+
+        return response()->json(['message' => 'Cargo cancelled and all pending bids have been notified.']);
     }
 }

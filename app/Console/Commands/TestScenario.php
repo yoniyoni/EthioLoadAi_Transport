@@ -60,6 +60,7 @@ class TestScenario extends Command
         $this->line('');
 
         $this->step1_RegisterLoginAll();
+        $this->stepPreVerifyDrivers();   // drivers must be verified before bidding
         $vehicleIds = $this->step2_RegisterVehicles();
         $this->step3_FleetSetup($vehicleIds);
         $this->step4_SeedPastRatings();
@@ -279,6 +280,20 @@ class TestScenario extends Command
         if ($token) $req = $req->withToken($token);
         $resp = $req->put(self::BASE . $path, $data);
         return [$resp->status(), $resp->json()];
+    }
+
+    // ─── Pre-step — Verify individual drivers so they can place bids ────────
+
+    private function stepPreVerifyDrivers(): void
+    {
+        $this->step('Pre-verify driver1 + driver2 (DB direct — Phase 2B does this via documents)', function () {
+            $ids = array_filter([$this->uid['driver1'] ?? null, $this->uid['driver2'] ?? null]);
+            if (empty($ids)) return [false, 'No driver UIDs available'];
+            $updated = DB::table('users')->whereIn('id', $ids)->update(['verification_status' => true]);
+            return $updated === count($ids)
+                ? [true, "verification_status=true for driver1 + driver2"]
+                : [false, "Expected " . count($ids) . " updated, got {$updated}"];
+        });
     }
 
     // ─── Step 1 — Register + login all 7 accounts ───────────────────────────
@@ -578,9 +593,12 @@ class TestScenario extends Command
 
     // ─── Step 9 — Verify auto-reject of other bids ───────────────────────────
 
-    private function step9_VerifyAutoReject(int $bidD1Id, int $bidD2Id): void
+    private function step9_VerifyAutoReject(?int $bidD1Id, ?int $bidD2Id): void
     {
         $this->step("Driver1 and Driver2 bids auto-rejected after fleet bid accepted", function () use ($bidD1Id, $bidD2Id) {
+            if (!$bidD1Id || !$bidD2Id) {
+                return [false, "Driver bids not placed (null IDs) — verify step6 bid placement succeeded"];
+            }
             $d1 = DB::table('bids')->where('id', $bidD1Id)->value('status');
             $d2 = DB::table('bids')->where('id', $bidD2Id)->value('status');
             if ($d1 !== 'rejected') return [false, "Driver1 bid status is '{$d1}', expected 'rejected'"];
@@ -713,24 +731,24 @@ class TestScenario extends Command
             return [true, "shipper→driver rating=5 saved"];
         });
 
-        $this->step("Biruk rates Almaz (shipper): 4 stars", function () use ($bookingId) {
+        // Only shippers can rate — driver should receive 403
+        $this->step("Biruk attempts to rate Almaz (driver cannot rate) → expect 403", function () use ($bookingId) {
             [$s, $r] = $this->post('/ratings', [
                 'booking_id' => $bookingId,
                 'rating'     => 4,
                 'feedback'   => 'Easy load, good communication.',
             ], $this->tok['driver3']);
-            if (!in_array($s, [200, 201])) return [false, $this->fmt($s, $r)];
-            return [true, "driver→shipper rating=4 saved"];
+            if ($s !== 403) return [false, "Expected 403, got " . $this->fmt($s, $r)];
+            return [true, "403 — RatingController correctly blocks driver from rating"];
         });
 
-        $this->step("Verify ratings saved for booking #{$bookingId}", function () use ($bookingId) {
+        $this->step("Verify 1 rating saved for booking #{$bookingId} (shipper only)", function () use ($bookingId) {
             [$s, $r] = $this->get("/ratings/{$bookingId}", $this->tok['admin']);
             if ($s !== 200) return [false, $this->fmt($s, $r)];
             $ratings = $r['data'] ?? [];
-            if (count($ratings) < 2) return [false, "Expected 2 ratings, got " . count($ratings)];
-            $scores = array_column($ratings, 'rating');
-            sort($scores);
-            return [true, "2 ratings saved: [" . implode(', ', $scores) . "] ✓"];
+            if (count($ratings) !== 1) return [false, "Expected 1 rating (shipper only), got " . count($ratings)];
+            $score = $ratings[0]['rating'] ?? null;
+            return [true, "1 rating saved: [{$score}] ✓"];
         });
 
         $this->step("Biruk's average rating recalculated (should include new 5★ + 3 historical 4.6★)", function () {

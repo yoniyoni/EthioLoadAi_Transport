@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Rating;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -54,10 +55,12 @@ class BookingResource extends JsonResource
             'driver_name'   => $this->driver?->full_name,
             'shipper_phone' => $this->cargoRequest?->user?->phone,
             'shipper_name'  => $this->cargoRequest?->user?->full_name,
-            'payment_method' => $this->payment?->payment_method,
-            'has_rating'     => $this->rating !== null,
-            'shipper_rating' => $this->rating?->rating,   // 1-5 stars from shipper, null if not yet rated
-            'rating_feedback'=> $this->rating?->feedback,
+            'payment_method'    => $this->payment?->payment_method,
+            'has_rating'        => Rating::where('booking_id', $this->id)
+                                         ->where('rater_id', auth()->id())
+                                         ->exists(),
+            'shipper_rating'    => $this->rating?->rating,
+            'rating_feedback'   => $this->rating?->feedback,
             'created_at'     => $this->created_at,
             'updated_at'     => $this->updated_at,
         ];
