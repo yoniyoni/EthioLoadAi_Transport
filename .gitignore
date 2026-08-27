@@ -1,0 +1,30 @@
+# Temporary build, install, and verify logs from Flutter mobile-app CI sessions
+frontend/artifacts/mobile-app/*output*.txt
+frontend/artifacts/mobile-app/*install*.txt
+frontend/artifacts/mobile-app/analyze*.txt
+frontend/artifacts/mobile-app/verify*.txt
+frontend/artifacts/mobile-app/sdk*.txt
+frontend/artifacts/mobile-app/cmake_install.txt
+frontend/artifacts/mobile-app/final_*.txt
+
+# Additional patterns to cover infix-wildcard filenames
+frontend/artifacts/mobile-app/*install.txt
+frontend/artifacts/mobile-app/*analyze*.txt
+frontend/artifacts/mobile-app/*verify*.txt
+
+# Secrets and local environment files
+.env
+.env.local
+**/.env
+**/.env.local
+backend-spring-boot/.env
+
+# Spring Boot compiled build artifacts
+backend-spring-boot/target/
+
+# PHP/Composer dependencies (restore with: composer install)
+vendor/
+
+# Python bytecode
+**/__pycache__/
+*.pyc
